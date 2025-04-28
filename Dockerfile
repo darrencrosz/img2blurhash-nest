@@ -7,14 +7,17 @@ WORKDIR /app
 # 复制 package.json 和 package-lock.json
 COPY package*.json ./
 
-# 安装依赖
-RUN npm install --production
+# 安装全部依赖（包含 devDependencies，保证 nest CLI 可用）
+RUN npm install
 
 # 复制项目所有文件
 COPY . .
 
-# 构建 NestJS 项目（如果是 TS 源码，需要先构建）
+# 构建 NestJS 项目
 RUN npm run build
+
+# 生产环境只保留生产依赖
+RUN npm prune --production
 
 # 启动服务（假设 dist/main.js 是入口）
 CMD ["node", "dist/main.js"]
