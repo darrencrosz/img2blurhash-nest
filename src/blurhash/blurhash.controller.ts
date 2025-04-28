@@ -11,20 +11,21 @@ import {
   UsePipes,
   ValidationPipe,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
   Req,
 } from '@nestjs/common';
 import { BlurhashService } from './blurhash.service';
 import { Response } from 'express';
 import { UploadBlurhashDto } from './dto/upload-blurhash.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { multerImageStorage, imageFileFilter } from './file-upload.util';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { UrlBlurhashDto } from './dto/url-blurhash.dto';
 import { BatchUrlBlurhashDto } from './dto/batch-url-blurhash.dto';
 import { BatchDecodeBlurhashDto } from './dto/batch-decode-blurhash.dto';
 import { downloadImageBuffer } from './utils/download.util';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { MixedBatchBlurhashDto, MixedInputType } from './dto/mixed-batch-blurhash.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
@@ -34,66 +35,92 @@ import { UseGuards } from '@nestjs/common';
 export class BlurhashController {
   constructor(private readonly blurhashService: BlurhashService) {}
 
-  @UseGuards(JwtAuthGuard)
-  @Post('upload')
-  @UsePipes(new ValidationPipe({ whitelist: true }))
-  @ApiOperation({ summary: '通过 base64 图片生成 blurhash' })
-  @ApiBody({
-    type: UploadBlurhashDto,
-    description: 'base64 图片及可选参数',
-    examples: {
-      default: {
-        summary: '典型请求',
-        value: {
-          image: 'iVBORw0KGgoAAAANSUhEUgAA...',
-          componentX: 4,
-          componentY: 3
-        }
-      }
-    }
-  })
-  @ApiResponse({ status: 201, description: '生成 blurhash 成功', schema: {
-    example: {
-      code: 0,
-      message: 'success',
-      data: {
-        blurhash: 'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
-        metadata: { width: 320, height: 240, type: 'image/png' },
-        settings: { componentX: 4, componentY: 3 }
-      }
-    }
-  }})
-  async generateFromUpload(@Body() uploadDto: UploadBlurhashDto) {
-    const { image, componentX, componentY } = uploadDto;
-    const buffer = Buffer.from(image, 'base64');
-    return this.blurhashService.getBlurhashFromBuffer(buffer, { componentX, componentY });
-  }
+  // @ApiBearerAuth('JWT')
+  // @UseGuards(JwtAuthGuard)
+  // @Post('upload')
+  // @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  // @ApiOperation({ summary: '通过 base64 图片生成 blurhash' })
+  // @ApiBody({
+  //   type: UploadBlurhashDto,
+  //   description: 'base64 图片及可选参数',
+  //   examples: {
+  //     default: {
+  //       summary: '典型请求',
+  //       value: {
+  //         image: 'iVBORw0KGgoAAAANSUhEUgAA...',
+  //         componentX: 4,
+  //         componentY: 3
+  //       }
+  //     }
+  //   }
+  // })
+  // @ApiResponse({ status: 201, description: '生成 blurhash 成功', schema: {
+  //   example: {
+  //     code: 0,
+  //     message: 'success',
+  //     data: {
+  //       blurhash: 'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
+  //       metadata: { width: 320, height: 240, type: 'image/png' },
+  //       settings: { componentX: 4, componentY: 3 }
+  //     }
+  //   }
+  // }})
+  // async generateFromUpload(@Body() uploadDto: UploadBlurhashDto) {
+  //   const { image, componentX, componentY } = uploadDto;
+  //   const buffer = Buffer.from(image, 'base64');
+  //   return this.blurhashService.getBlurhashFromBuffer(buffer, { componentX, componentY });
+  // }
 
+  @ApiBearerAuth('JWT')
   @UseGuards(JwtAuthGuard)
   @Post('upload-file')
-  @UseInterceptors(FileInterceptor('image', {
+  @UseInterceptors(FileInterceptor('file', {
     storage: multerImageStorage,
     fileFilter: imageFileFilter,
     limits: { fileSize: 5 * 1024 * 1024 },
   }))
-  @UsePipes(new ValidationPipe({ whitelist: true }))
-  @ApiOperation({ summary: '上传图片文件生成 blurhash' })
-  @ApiBody({ type: UploadFileDto })
-  @ApiResponse({ status: 201, description: '生成 blurhash 成功' })
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  @ApiOperation({ summary: '通过图片文件生成 blurhash' })
+  @ApiBody({
+    description: '图片文件（file 字段上传），可选参数 componentX/componentY',
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary', description: '图片文件' },
+        componentX: { type: 'integer', minimum: 1, maximum: 9, example: 4, description: '横向分量数' },
+        componentY: { type: 'integer', minimum: 1, maximum: 9, example: 3, description: '纵向分量数' },
+      },
+      required: ['file'],
+    },
+  })
   async generateFromFile(
     @UploadedFile() file: any,
     @Body() uploadFileDto: UploadFileDto,
   ) {
+    // 调试：打印 file 和 uploadFileDto
+    console.log('上传文件信息:', file);
+    console.log('DTO 参数:', uploadFileDto);
     if (!file) {
       throw new HttpException('未检测到上传图片', HttpStatus.BAD_REQUEST);
     }
+    // 兼容 diskStorage: file.buffer 可能不存在，需从文件路径读取 Buffer
+    let imageBuffer: Buffer;
+    if (file.buffer) {
+      imageBuffer = file.buffer;
+    } else if (file.path) {
+      const fs = require('fs');
+      imageBuffer = fs.readFileSync(file.path);
+    } else {
+      throw new HttpException('无法获取上传的图片数据', HttpStatus.BAD_REQUEST);
+    }
     const { componentX, componentY } = uploadFileDto;
-    return this.blurhashService.getBlurhashFromBuffer(file.buffer, { componentX, componentY });
+    return this.blurhashService.getBlurhashFromBuffer(imageBuffer, { componentX, componentY });
   }
 
+  @ApiBearerAuth('JWT')
   @UseGuards(JwtAuthGuard)
   @Post('url')
-  @UsePipes(new ValidationPipe({ whitelist: true }))
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   @ApiOperation({ summary: '通过图片 URL 生成 blurhash' })
   @ApiBody({
     type: UrlBlurhashDto,
@@ -121,15 +148,14 @@ export class BlurhashController {
     }
   }})
   async fromUrl(@Req() req: Request, @Body() urlDto: UrlBlurhashDto) {
-    console.log('BlurhashController /url req.user:', (req as any).user);
-    console.log('BlurhashController /url req.headers.authorization:', req.headers['authorization']);
     const buffer = await downloadImageBuffer(urlDto.url);
     return this.blurhashService.getBlurhashFromBuffer(buffer, urlDto);
   }
 
+  @ApiBearerAuth('JWT')
   @UseGuards(JwtAuthGuard)
   @Post('batch-url')
-  @UsePipes(new ValidationPipe({ whitelist: true }))
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   @ApiOperation({ summary: '批量通过图片 URL 生成 blurhash' })
   @ApiBody({
     type: BatchUrlBlurhashDto,
@@ -177,26 +203,29 @@ export class BlurhashController {
     return { results };
   }
 
-  @Get('decode/:blurhash')
-  @ApiOperation({ summary: '解码 blurhash 并返回图片' })
-  @ApiParam({ name: 'blurhash', description: 'Blurhash 字符串' })
-  @ApiQuery({ name: 'width', required: false, type: Number, description: '宽度' })
-  @ApiQuery({ name: 'height', required: false, type: Number, description: '高度' })
-  @ApiQuery({ name: 'punch', required: false, type: Number, description: '对比度因子' })
-  @ApiResponse({ status: 200, description: '返回 PNG 图片' })
-  async decodeHash(
-    @Param('blurhash') blurhash: string,
-    @Query('width') width: string,
-    @Query('height') height: string,
-    @Query('punch') punch: string,
-    @Res() res: Response,
-  ) {
+  @Post('decode')
+  @ApiOperation({ summary: '解码 blurhash 为图片（POST，参数放 body，避免特殊字符问题）' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        blurhash: { type: 'string', description: 'blurhash 字符串', example: 'LEHV6nWB2yk8pyo0adR*.7kCMdnj' },
+        width: { type: 'integer', description: '输出图片宽度', example: 32 },
+        height: { type: 'integer', description: '输出图片高度', example: 32 },
+        punch: { type: 'number', description: '对比度因子', example: 1 },
+      },
+      required: ['blurhash']
+    }
+  })
+  @ApiResponse({ status: 200, description: 'PNG 图片', schema: { type: 'string', format: 'binary' } })
+  async decodeHash(@Body() body: { blurhash: string; width?: number; height?: number; punch?: number }, @Res() res: Response) {
+    const { blurhash, width, height, punch } = body;
     if (!blurhash) {
       throw new HttpException('缺少blurhash参数', HttpStatus.BAD_REQUEST);
     }
-    const w = parseInt(width) || 32;
-    const h = parseInt(height) || 32;
-    const p = parseFloat(punch) || 1.0;
+    const w = parseInt(width as any) || 32;
+    const h = parseInt(height as any) || 32;
+    const p = parseFloat(punch as any) || 1.0;
     if (w <= 0 || w > 1000 || h <= 0 || h > 1000) {
       throw new HttpException('宽度和高度必须在1-1000之间', HttpStatus.BAD_REQUEST);
     }
@@ -211,7 +240,7 @@ export class BlurhashController {
 
   @UseGuards(JwtAuthGuard)
   @Post('batch-decode')
-  @UsePipes(new ValidationPipe({ whitelist: true }))
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   @ApiOperation({ summary: '批量解码 blurhash 为图片' })
   @ApiBody({
     type: BatchDecodeBlurhashDto,
@@ -260,61 +289,50 @@ export class BlurhashController {
     return { results };
   }
 
+  @ApiBearerAuth('JWT')
   @UseGuards(JwtAuthGuard)
   @Post('mixed-batch')
-  @UsePipes(new ValidationPipe({ whitelist: true }))
-  @ApiOperation({ summary: '混合批量生成 blurhash（支持 url/base64）' })
-  @ApiBody({
-    type: MixedBatchBlurhashDto,
-    description: '混合批量输入列表',
-    examples: {
-      default: {
-        summary: '典型请求',
-        value: {
-          items: [
-            { type: 'url', value: 'https://example.com/1.jpg', componentX: 4, componentY: 3 },
-            { type: 'base64', value: 'iVBORw0KGgoAAAANSUhEUgAA...' }
-          ]
-        }
+  @ApiOperation({ summary: '混合批量生成 blurhash（支持 url+文件）' })
+  @UseInterceptors(FilesInterceptor('files'))
+  async mixedBatch(
+    @UploadedFiles() files: any[],
+    @Body() dto: any,
+  ) {
+    // 调试：打印 items 字段收到的原始内容和类型
+    console.log('raw dto.items:', dto.items, typeof dto.items);
+    let items = dto.items;
+    if (typeof items === 'string') {
+      try {
+        items = JSON.parse(items);
+      } catch (e) {
+        throw new HttpException('items 字段 JSON 解析失败: ' + e.message, HttpStatus.BAD_REQUEST);
       }
     }
-  })
-  @ApiResponse({ status: 201, description: '混合批量生成 blurhash 成功', schema: {
-    example: {
-      code: 0,
-      message: 'success',
-      data: {
-        results: [
-          {
-            type: 'url',
-            value: 'https://example.com/1.jpg',
-            blurhash: 'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
-            metadata: { width: 320, height: 240, type: 'image/jpeg' },
-            settings: { componentX: 4, componentY: 3 }
-          },
-          {
-            type: 'base64',
-            value: 'iVBORw0KGgoAAAANSUhEUgAA...',
-            blurhash: 'LEHV6nWB2yk8pyo0adR*.7kCMdnj',
-            metadata: { width: 320, height: 240, type: 'image/png' },
-            settings: { componentX: 4, componentY: 3 }
-          },
-          { type: 'url', value: 'https://example.com/404.jpg', error: '图片获取失败' }
-        ]
+    // 新增：如果 items 是对象且有 items 字段（部分客户端会包裹一层），自动展开
+    if (items && typeof items === 'object' && !Array.isArray(items) && Array.isArray(items.items)) {
+      items = items.items;
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new HttpException('items 字段必须为非空数组', HttpStatus.BAD_REQUEST);
+    }
+    // 构造 fileMap
+    const fileMap = {};
+    if (Array.isArray(files)) {
+      for (const file of files) {
+        fileMap[file.originalname] = file.buffer || (file.path && require('fs').readFileSync(file.path));
       }
     }
-  }})
-  async mixedBatch(@Body() dto: MixedBatchBlurhashDto) {
     const results = await Promise.all(
-      dto.items.map(async ({ type, value, componentX, componentY }) => {
+      items.map(async ({ type, value, componentX, componentY }) => {
         try {
           let buffer: Buffer;
-          if (type === MixedInputType.URL) {
+          if (type === 'url') {
             buffer = await downloadImageBuffer(value);
-          } else if (type === MixedInputType.BASE64) {
-            buffer = Buffer.from(value, 'base64');
+          } else if (type === 'file') {
+            if (!fileMap[value]) throw new Error('未上传对应文件: ' + value);
+            buffer = fileMap[value];
           } else {
-            throw new Error('文件类型暂未实现，仅支持 url/base64');
+            throw new Error('仅支持 url/file 类型');
           }
           const data = await this.blurhashService.getBlurhashFromBuffer(buffer, { componentX, componentY });
           return { type, value, ...data };

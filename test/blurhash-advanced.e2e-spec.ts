@@ -7,6 +7,8 @@ import { AllExceptionsFilter } from '../src/common/filters/http-exception.filter
 
 describe('BlurhashController Advanced (e2e)', () => {
   let app: INestApplication;
+  const demoApiKey = 'demo_key1';
+  let jwtToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -19,6 +21,13 @@ describe('BlurhashController Advanced (e2e)', () => {
     app.useGlobalFilters(new AllExceptionsFilter());
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
+
+    // 登录获取 token
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .set('Content-Type', 'application/json')
+      .send({ apiKey: demoApiKey });
+    jwtToken = res.body.data.token;
   });
 
   afterAll(async () => {
@@ -30,6 +39,7 @@ describe('BlurhashController Advanced (e2e)', () => {
     const redDotBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=';
     const res = await request(app.getHttpServer())
       .post('/api/v1/blurhashes/mixed-batch')
+      .set('Authorization', 'Bearer ' + jwtToken)
       .send({ items: [
         { type: 'url', value: 'https://raw.githubusercontent.com/woltapp/blurhash/master/test/fixtures/rainbow.png' },
         { type: 'base64', value: redDotBase64 }
@@ -61,6 +71,7 @@ describe('BlurhashController Advanced (e2e)', () => {
     ];
     const res = await request(app.getHttpServer())
       .post('/api/v1/blurhashes/batch-decode')
+      .set('Authorization', 'Bearer ' + jwtToken)
       .send({ blurhashes: hashes });
     expect([200, 201, 500]).toContain(res.status);
     if ([200, 201].includes(res.status)) {

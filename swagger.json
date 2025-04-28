@@ -1,0 +1,769 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "description": "通过 API Key 认证，获取 JWT Bearer Token。",
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "apiKey": "your_api_key"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token 获取成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "code": 0,
+                    "message": "success",
+                    "data": {
+                      "token": "jwt_token_string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API Key 错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "code": -1,
+                    "message": "Unauthorized",
+                    "data": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "获取 JWT Token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/blurhashes/upload": {
+      "post": {
+        "operationId": "BlurhashController_generateFromUpload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "base64 图片及可选参数",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadBlurhashDto"
+              },
+              "examples": {
+                "default": {
+                  "summary": "典型请求",
+                  "value": {
+                    "image": "iVBORw0KGgoAAAANSUhEUgAA...",
+                    "componentX": 4,
+                    "componentY": 3
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "生成 blurhash 成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "code": 0,
+                    "message": "success",
+                    "data": {
+                      "blurhash": "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+                      "metadata": {
+                        "width": 320,
+                        "height": 240,
+                        "type": "image/png"
+                      },
+                      "settings": {
+                        "componentX": 4,
+                        "componentY": 3
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "通过 base64 图片生成 blurhash",
+        "tags": [
+          "blurhashes"
+        ]
+      }
+    },
+    "/blurhashes/upload-file": {
+      "post": {
+        "operationId": "BlurhashController_generateFromFile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "图片文件（file 字段上传），可选参数 componentX/componentY",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "图片文件"
+                  },
+                  "componentX": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9,
+                    "example": 4,
+                    "description": "横向分量数"
+                  },
+                  "componentY": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9,
+                    "example": 3,
+                    "description": "纵向分量数"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "通过图片文件生成 blurhash",
+        "tags": [
+          "blurhashes"
+        ]
+      }
+    },
+    "/blurhashes/url": {
+      "post": {
+        "operationId": "BlurhashController_fromUrl",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "图片 URL 及可选参数",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UrlBlurhashDto"
+              },
+              "examples": {
+                "default": {
+                  "summary": "典型请求",
+                  "value": {
+                    "url": "https://example.com/1.jpg",
+                    "componentX": 4,
+                    "componentY": 3
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "生成 blurhash 成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "code": 0,
+                    "message": "success",
+                    "data": {
+                      "blurhash": "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+                      "metadata": {
+                        "width": 320,
+                        "height": 240,
+                        "type": "image/jpeg"
+                      },
+                      "settings": {
+                        "componentX": 4,
+                        "componentY": 3
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "通过图片 URL 生成 blurhash",
+        "tags": [
+          "blurhashes"
+        ]
+      }
+    },
+    "/blurhashes/batch-url": {
+      "post": {
+        "operationId": "BlurhashController_batchFromUrl",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "图片 URL 批量列表",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchUrlBlurhashDto"
+              },
+              "examples": {
+                "default": {
+                  "summary": "典型请求",
+                  "value": {
+                    "items": [
+                      {
+                        "url": "https://example.com/1.jpg",
+                        "componentX": 4,
+                        "componentY": 3
+                      },
+                      {
+                        "url": "https://example.com/2.jpg"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "批量生成 blurhash 成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "code": 0,
+                    "message": "success",
+                    "data": {
+                      "results": [
+                        {
+                          "blurhash": "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+                          "metadata": {
+                            "width": 320,
+                            "height": 240,
+                            "type": "image/jpeg"
+                          },
+                          "settings": {
+                            "componentX": 4,
+                            "componentY": 3
+                          }
+                        },
+                        {
+                          "error": "图片获取失败",
+                          "url": "https://example.com/2.jpg"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "批量通过图片 URL 生成 blurhash",
+        "tags": [
+          "blurhashes"
+        ]
+      }
+    },
+    "/blurhashes/decode/{blurhash}": {
+      "get": {
+        "operationId": "BlurhashController_decodeHash",
+        "parameters": [
+          {
+            "name": "blurhash",
+            "required": true,
+            "in": "path",
+            "description": "Blurhash 字符串",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "width",
+            "required": false,
+            "in": "query",
+            "description": "宽度",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "height",
+            "required": false,
+            "in": "query",
+            "description": "高度",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "punch",
+            "required": false,
+            "in": "query",
+            "description": "对比度因子",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "返回 PNG 图片"
+          }
+        },
+        "summary": "解码 blurhash 并返回图片",
+        "tags": [
+          "blurhashes"
+        ]
+      }
+    },
+    "/blurhashes/batch-decode": {
+      "post": {
+        "operationId": "BlurhashController_batchDecode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "待解码 blurhash 列表",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchDecodeBlurhashDto"
+              },
+              "examples": {
+                "default": {
+                  "summary": "典型请求",
+                  "value": {
+                    "blurhashes": [
+                      {
+                        "blurhash": "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+                        "width": 32,
+                        "height": 32
+                      },
+                      {
+                        "blurhash": "INVALID_BLURHASH"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "批量解码 blurhash 成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "code": 0,
+                    "message": "success",
+                    "data": {
+                      "results": [
+                        {
+                          "blurhash": "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+                          "image": "iVBORw0KGgoAAAANSUhEUgAA..."
+                        },
+                        {
+                          "blurhash": "INVALID_BLURHASH",
+                          "error": "解码blurhash失败: Invalid blurhash string length"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "批量解码 blurhash 为图片",
+        "tags": [
+          "blurhashes"
+        ]
+      }
+    },
+    "/blurhashes/mixed-batch": {
+      "post": {
+        "operationId": "BlurhashController_mixedBatch",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "混合批量输入列表",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixedBatchBlurhashDto"
+              },
+              "examples": {
+                "default": {
+                  "summary": "典型请求",
+                  "value": {
+                    "items": [
+                      {
+                        "type": "url",
+                        "value": "https://example.com/1.jpg",
+                        "componentX": 4,
+                        "componentY": 3
+                      },
+                      {
+                        "type": "base64",
+                        "value": "iVBORw0KGgoAAAANSUhEUgAA..."
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "混合批量生成 blurhash 成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "code": 0,
+                    "message": "success",
+                    "data": {
+                      "results": [
+                        {
+                          "type": "url",
+                          "value": "https://example.com/1.jpg",
+                          "blurhash": "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+                          "metadata": {
+                            "width": 320,
+                            "height": 240,
+                            "type": "image/jpeg"
+                          },
+                          "settings": {
+                            "componentX": 4,
+                            "componentY": 3
+                          }
+                        },
+                        {
+                          "type": "base64",
+                          "value": "iVBORw0KGgoAAAANSUhEUgAA...",
+                          "blurhash": "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+                          "metadata": {
+                            "width": 320,
+                            "height": 240,
+                            "type": "image/png"
+                          },
+                          "settings": {
+                            "componentX": 4,
+                            "componentY": 3
+                          }
+                        },
+                        {
+                          "type": "url",
+                          "value": "https://example.com/404.jpg",
+                          "error": "图片获取失败"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "混合批量生成 blurhash（支持 url/base64）",
+        "tags": [
+          "blurhashes"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "img2blurhash API",
+    "description": "基于 NestJS 的 Blurhash 编码/解码服务，支持图片上传、URL、混合批量、批量解码等多种场景。",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "JWT": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "在下方 Authorize 输入框粘贴 Bearer Token（无需 Bearer 前缀）"
+      }
+    },
+    "schemas": {
+      "UploadBlurhashDto": {
+        "type": "object",
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "图片 base64 字符串",
+            "example": "iVBORw0KGgoAAAANSUhEUgAA..."
+          },
+          "componentX": {
+            "type": "number",
+            "description": "blurhash 横向分量数，默认 4，范围 1~9",
+            "example": 4,
+            "minimum": 1,
+            "maximum": 9
+          },
+          "componentY": {
+            "type": "number",
+            "description": "blurhash 纵向分量数，默认 3，范围 1~9",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 9
+          }
+        },
+        "required": [
+          "image"
+        ]
+      },
+      "UrlBlurhashDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "图片 URL",
+            "example": "https://example.com/1.jpg"
+          },
+          "componentX": {
+            "type": "number",
+            "description": "blurhash 横向分量数，默认 4，范围 1~9",
+            "example": 4,
+            "minimum": 1,
+            "maximum": 9
+          },
+          "componentY": {
+            "type": "number",
+            "description": "blurhash 纵向分量数，默认 3，范围 1~9",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 9
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "BatchUrlItem": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "图片 URL",
+            "example": "https://example.com/1.jpg"
+          },
+          "componentX": {
+            "type": "number",
+            "description": "blurhash 横向分量数，默认 4，范围 1~9",
+            "example": 4,
+            "minimum": 1,
+            "maximum": 9
+          },
+          "componentY": {
+            "type": "number",
+            "description": "blurhash 纵向分量数，默认 3，范围 1~9",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 9
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "BatchUrlBlurhashDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "图片 URL 批量列表",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchUrlItem"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "BatchDecodeItem": {
+        "type": "object",
+        "properties": {
+          "blurhash": {
+            "type": "string",
+            "description": "blurhash 字符串",
+            "example": "LEHV6nWB2yk8pyo0adR*.7kCMdnj"
+          },
+          "width": {
+            "type": "number",
+            "description": "解码后图片宽度，默认 32，范围 1~1000",
+            "example": 32,
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "height": {
+            "type": "number",
+            "description": "解码后图片高度，默认 32，范围 1~1000",
+            "example": 32,
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "punch": {
+            "type": "number",
+            "description": "解码 punch 参数，默认 1，范围 1~10",
+            "example": 1,
+            "minimum": 1,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "blurhash"
+        ]
+      },
+      "BatchDecodeBlurhashDto": {
+        "type": "object",
+        "properties": {
+          "blurhashes": {
+            "description": "待解码 blurhash 列表",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchDecodeItem"
+            }
+          }
+        },
+        "required": [
+          "blurhashes"
+        ]
+      },
+      "MixedBatchItem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "输入类型：url、base64、file",
+            "enum": [
+              "url",
+              "base64",
+              "file"
+            ],
+            "example": "url"
+          },
+          "value": {
+            "type": "string",
+            "description": "输入内容，url 或 base64 字符串，file 类型为文件名（预留）",
+            "example": "https://example.com/1.jpg"
+          },
+          "componentX": {
+            "type": "number",
+            "description": "blurhash 横向分量数，默认 4，范围 1~9",
+            "example": 4,
+            "minimum": 1,
+            "maximum": 9
+          },
+          "componentY": {
+            "type": "number",
+            "description": "blurhash 纵向分量数，默认 3，范围 1~9",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 9
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      },
+      "MixedBatchBlurhashDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "混合批量输入列表",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MixedBatchItem"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
+    }
+  }
+}

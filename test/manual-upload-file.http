@@ -1,0 +1,19 @@
+### 手动测试 upload-file multipart/form-data 参数类型
+POST http://localhost:3000/api/v1/blurhashes/upload-file
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=---011000010111000001101001
+
+---011000010111000001101001
+Content-Disposition: form-data; name="file"; filename="th.jpeg"
+Content-Type: image/jpeg
+
+< ./Downloads/th.jpeg
+---011000010111000001101001
+Content-Disposition: form-data; name="componentX"
+
+4
+---011000010111000001101001
+Content-Disposition: form-data; name="componentY"
+
+3
+---011000010111000001101001--

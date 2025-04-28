@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import sharp from 'sharp';
+import * as sharp from 'sharp';
 import { encode, decode } from 'blurhash';
 import { CacheService } from './cache.service';
 import { LoggerService } from './logger.service';

@@ -4,18 +4,17 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum MixedInputType {
   URL = 'url',
-  BASE64 = 'base64',
   FILE = 'file',
 }
 
 export class MixedBatchItem {
   @IsEnum(MixedInputType)
-  @ApiProperty({ description: '输入类型：url、base64、file', enum: MixedInputType, example: 'url' })
+  @ApiProperty({ description: '输入类型：url、file', enum: MixedInputType, example: 'url' })
   type: MixedInputType;
 
   @IsString()
-  @ApiProperty({ description: '输入内容，url 或 base64 字符串，file 类型为文件名（预留）', example: 'https://example.com/1.jpg' })
-  value: string; // url, base64, 或文件名（file 仅做占位，实际应用时可扩展）
+  @ApiProperty({ description: '输入内容，url 或文件名（file 类型与上传文件名一致）', example: 'https://example.com/1.jpg' })
+  value: string; // url, 或文件名（file 类型与上传文件名一致）
 
   @IsOptional()
   @IsInt()

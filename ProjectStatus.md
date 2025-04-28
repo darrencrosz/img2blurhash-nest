@@ -68,6 +68,16 @@
 - [X] Swagger 文档体验大幅提升，前端/三方对接无障碍
 - [ ] 可继续推进接口分组、全局说明、错误码文档与 README 指南完善
 
+## 2025-04-28 Swagger 文档鉴权标识补全
+
+#### 已实现功能
+- 为所有受 JWT 保护接口（upload、url、batch-url、mixed-batch）补充 @ApiBearerAuth()，Swagger 文档自动带“Authorize”锁标识。
+- 服务启动后，/api-docs 页面右上角有 Authorize 按钮，受保护接口均有锁标识，鉴权说明清晰。
+
+#### 下一步建议
+- 可导出 OpenAPI 文件（JSON/YAML），便于前端/第三方集成。
+- 可补充异常分支 e2e 测试，提升健壮性。
+
 ## 2025-04-28 04:30 阶段性成果与后续建议
 
 - [X] 项目已实现：主流程、批量、混合、解码等接口，RESTful + OpenAPI 规范，接口文档入口 `/api-docs`，全局前缀 `/api/v1`
@@ -88,6 +98,23 @@
 
 - [X] 修复 e2e 鉴权环境变量问题，`test:e2e` 脚本自动注入 API_KEYS，保证测试流程与线上一致，解决 401 报错
 
+### 2025-04-28 e2e 测试修复与通过
+
+### 已实现功能
+- JWT 鉴权链路全流程 e2e 测试全部通过，所有受保护接口均能正确鉴权。
+- 统一 token 获取逻辑到 beforeAll，避免作用域和时序导致的 401。
+
+### 遇到的错误
+- e2e 用例 401 问题，实际为 token 未赋值或作用域问题。
+- jest 进程/缓存导致幽灵断言。
+
+### 解决方案
+- 将 token 获取移到 beforeAll，全局赋值。
+- 清理 jest 缓存、重启终端。
+
+### 执行结果
+- ✅ 全部 e2e 测试通过。
+
 下一步建议：
 - [ ] 归档阶段成果，整理最终文档结构
 - [ ] 可选：补充 CI/CD 自动化部署配置（如 GitHub Actions）
@@ -107,3 +134,64 @@
 如需优先实现自动化测试、性能优化、接口文档梳理等，请随时补充。
 
 如需优先扩展测试用例、性能优化、接口文档梳理等，请随时补充。
+
+## 2025-04-29 00:19 进展归档
+
+- 已修正 Swagger Bearer Token 安全方案，所有受保护接口均使用 @ApiBearerAuth('JWT')，swagger 文档右上角 Authorize 按钮和接口锁标识均正常显示。
+- 新增 /api/v1/blurhashes/upload-file 文件上传接口，支持 multipart/form-data，swagger 文档参数与响应描述完整。
+- e2e 测试用例完善，断言兼容多种 message 类型，全部通过。
+- 自动生成 swagger.json（OpenAPI 3.0），便于前端/第三方集成。
+
+### 下一步建议
+- 可根据 swagger.json 导入 Postman 或生成 SDK。
+- 建议定期归档经验、持续完善异常分支测试。
+
+### 2025-04-29 00:20 修复 blurhash 文件上传接口参数类型校验失败
+
+- 修复 upload-file 文件上传接口参数类型校验失败问题：
+  - DTO 增加 @Type(() => Number) 保证 multipart/form-data 下参数自动转 number。
+  - 路由已启用 transform: true，类型转换和校验全部正常。
+  - 已补充 http 手动测试用例（test/manual-upload-file.http），便于后续回归。
+- npm run test:e2e -- --testNamePattern=upload-file 通过，功能接口逻辑无误。
+
+遇到端口占用可 kill 旧 node 进程或重启终端。
+
+下一步建议：
+- 增加更多异常/边界用例（如缺参数、类型错误、超大文件等）
+- swagger 文档导出/前端联调
+
+## 2025-04-29 01:27 移除 base64 图片上传接口
+- 由于 base64 图片体积大、易超出 body 限制，已将 `/api/v1/blurhashes/upload` 注释，后续仅保留文件上传和 URL 上传方式。
+- 经验总结：生产环境建议优先采用文件上传或 URL，避免大体积 JSON。
+
+---
+
+### [2025-04-29 01:28] 清理 base64 相关遗留内容
+- 已注释 base64 上传相关 controller、DTO、e2e 测试用例，彻底避免误用和无效测试。
+- 当前仅保留文件上传和 URL 上传两种 blurhash 生成方式。
+
+---
+
+### [2025-04-29 01:30] mixed-batch 支持 file 类型
+- /api/v1/blurhashes/mixed-batch 已移除 base64 支持，参数与 DTO 仅允许 url/file。
+- controller 支持 file 字段上传，value 字段与文件名对应。
+- swagger 文档、DTO 注释已同步调整。
+- TODO: 若需多文件批量上传，可扩展 FilesInterceptor。
+
+---
+
+### [2025-04-29 01:44] decode 接口改为 POST，参数放 body
+- 解决 blurhash 路径参数包含特殊字符导致解析失败的问题。
+- 新接口 POST /api/v1/blurhashes/decode，参数全部放 body，swagger 文档同步。
+- 推荐所有客户端都用 POST body 方式，无需 encodeURIComponent。
+
+---
+
+### Step: Docker 部署准备
+- 已生成 Dockerfile，内容包括 Node 20-alpine 基础镜像、依赖安装、项目构建与端口暴露。
+- 已生成 .dockerignore 文件，忽略 node_modules、dist、test、.git、Dockerfile、README.md、*.log。
+- 尚未推送到 run.claw.cloud。
+
+#### 当前进展
+- 已完成 Docker 部署相关文件生成。
+- 下一步可本地测试镜像构建与运行，或直接推送代码到 run.claw.cloud。
