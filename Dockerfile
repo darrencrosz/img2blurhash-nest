@@ -16,11 +16,14 @@ COPY . .
 # 构建 NestJS 项目
 RUN npm run build
 
+# 输出 dist 目录内容，便于排查
+RUN ls -l dist
+
 # 生产环境只保留生产依赖
 RUN npm prune --production
 
-# 启动服务（假设 dist/main.js 是入口）
-CMD ["node", "dist/main.js"]
+# 启动服务（修正为 dist/src/main.js）
+CMD ["node", "dist/src/main.js"]
 
 # 暴露端口（根据你的 main.ts 监听端口，默认 3000）
 EXPOSE 3000
