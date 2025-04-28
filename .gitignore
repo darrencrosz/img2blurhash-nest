@@ -50,3 +50,6 @@ yarn-error.log*
 
 # System Files
 Thumbs.db
+
+# Change User
+changeuser.sh

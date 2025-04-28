@@ -1,22 +1,71 @@
 # img2blurhash-nest
 
-基于 NestJS 的 Blurhash 编码/解码服务，支持图片上传、URL、混合批量、批量解码等多种场景。
+基于 NestJS 的高性能 Blurhash 编码/解码服务，支持图片上传、URL、混合批量、批量解码等多种场景，适合前后端低带宽图片预览、骨架屏、渐进式加载等应用。
 
-- **接口文档入口**： [http://localhost:3000/api-docs](http://localhost:3000/api-docs)
+- **接口文档**：[http://localhost:3000/api-docs](http://localhost:3000/api-docs)
 - **全局前缀**：`/api/v1`，所有接口均为 `/api/v1/blurhashes/...`
 
-## 快速上手
+---
+
+## 项目特性
+- 支持单张/批量图片 Blurhash 编码与解码
+- 支持图片上传、本地文件、URL 输入
+- 支持 JWT 鉴权与多 API Key 管理
+- 全局限流，保障服务安全
+- 丰富的接口文档（Swagger）与错误码说明
+- 便捷的本地开发、部署与测试
+
+## 适用场景
+- 前端骨架屏、图片占位符生成
+- 移动端/低带宽环境下的图片预览
+- CDN/图片服务的渐进式加载
+- 各类需要图片 hash/模糊占位的场景
+
+---
+
+## 快速开始
 
 ```bash
+# 克隆项目
+$ git clone <repo-url>
+$ cd img2blurhash-nest
+
 # 安装依赖
-npm install
+$ npm install
 
 # 启动开发环境
-npm run start:dev
+$ npm run start:dev
 
 # 运行 e2e 测试
-npm run test:e2e
+$ npm run test:e2e
 ```
+
+---
+
+## 依赖环境
+- Node.js >= 16.x
+- npm >= 8.x
+- 推荐使用 pnpm/yarn 亦可
+- 主要依赖：NestJS、sharp、blurhash
+
+---
+
+## 目录结构
+
+```
+img2blurhash-nest/
+├── src/               # 主源码目录
+│   ├── blurhashes/    # 编码解码相关模块
+│   ├── auth/          # 鉴权与 API Key 管理
+│   ├── common/        # 公共工具/中间件
+│   └── ...
+├── test/              # 测试用例
+├── .env.example       # 环境变量示例
+├── package.json       # 依赖与脚本
+└── README.md          # 项目说明
+```
+
+---
 
 ## 主要接口说明
 
@@ -58,6 +107,8 @@ npm run test:e2e
 ### 3. 批量处理/混合批量/批量解码
 详见 Swagger 文档 `/api-docs`，所有接口均有详细示例。
 
+---
+
 ## 全局响应结构
 ```json
 {
@@ -67,12 +118,14 @@ npm run test:e2e
 }
 ```
 
+---
+
 ## 错误码说明
 - `code=0`：成功
 - `code=-1`：服务端异常或参数错误
 - 其他 code 预留扩展
 
-## 常见错误码与异常说明
+### 常见错误码与异常说明
 
 | code  | message                  | 说明                       |
 |-------|--------------------------|----------------------------|
@@ -92,22 +145,20 @@ npm run test:e2e
 }
 ```
 
-- 服务端所有异常均会被统一包装为上述结构，code=-1 或自定义错误码，message 为具体错误信息。
-- 常见异常如参数校验失败、外部依赖异常、解码失败等均会返回合理的 code/message，便于前端精准处理。
+---
 
-## 接口限流说明
+## 限流说明
+- 全局限流：**每分钟每 IP 最多 30 次请求**，超限返回 429 状态码
+- 如需提高配额或定制限流策略，请联系维护者
 
-- 本服务已启用全局接口限流：**每分钟每 IP 最多 30 次请求**，超限将返回 429 状态码。
-- 如需提高配额或定制专属限流策略，请联系项目维护者。
+---
 
-## 鉴权与安全说明
-
-- 所有接口默认启用 JWT Bearer Token 鉴权，需在请求头携带 `Authorization: Bearer <token>`。
-- 可通过管理员分发的 Token 访问接口，或联系项目维护者获取。
-- 未携带或 Token 无效时将返回 401 Unauthorized。
+## 鉴权与安全
+- 所有接口默认启用 JWT Bearer Token 鉴权，需在请求头携带 `Authorization: Bearer <token>`
+- Token 可通过管理员分发或 `/api/v1/auth/login` 登录获取
+- 未携带或 Token 无效时返回 401 Unauthorized
 
 ### 获取 JWT Token 示例
-
 - 接口：`POST /api/v1/auth/login`
 - 请求体：
 ```json
@@ -120,9 +171,7 @@ npm run test:e2e
 {
   "code": 0,
   "message": "success",
-  "data": {
-    "token": "<jwt_token_string>"
-  }
+  "data": { "token": "<jwt_token_string>" }
 }
 ```
 - 失败响应：
@@ -134,118 +183,44 @@ npm run test:e2e
 }
 ```
 
-- 获取到 token 后，后续请求需在 Header 携带：
-  `Authorization: Bearer <token>`
-
-### 多用户/多 API Key 支持
-
-- 支持配置多个 API Key，便于多用户/多客户端接入。
-- 可通过环境变量 `API_KEYS` 配置（逗号分隔），如：
+#### 多用户/多 API Key 支持
+- 支持配置多个 API Key，便于多用户/多客户端接入
+- 通过环境变量 `API_KEYS` 配置，逗号分隔，如：
   ```bash
   API_KEYS=demo_key1,demo_key2,clientA_key
   ```
-- 登录接口 `/api/v1/auth/login` 支持上述任意 Key 换取 Token。
-
-## 贡献与支持
-如需贡献、反馈或定制开发，请联系项目维护者。
+- 登录接口 `/api/v1/auth/login` 支持上述任意 Key 换取 Token
 
 ---
 
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+## 常见问题 FAQ
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+**Q: 支持哪些图片格式？**
+A: 支持常见的 PNG、JPEG、WebP、GIF（静态帧）等，极少见格式或损坏文件会返回格式不支持。
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Q: 图片有大小/尺寸限制吗？**
+A: 默认支持 10MB 以内图片，超出限制会返回错误。
 
-## Description
+**Q: 如何自定义限流/鉴权策略？**
+A: 可通过修改配置或联系维护者定制。
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## 贡献指南
+- 欢迎 Issue、PR 与建议，建议先提 Issue 讨论
+- 代码需通过基本测试与 lint 检查
+- 贡献前请阅读并遵守本项目 MIT 协议
 
-```bash
-$ npm install
-```
+---
 
-## Compile and run the project
+## 联系方式
+- 邮箱：[darrencrosz_dev@outlook.com](mailto:darrencrosz_dev@outlook.com)
+- Github: [darrencrosz](https://github.com/darrencrosz)
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT
+
+---
