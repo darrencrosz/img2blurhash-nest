@@ -224,3 +224,19 @@ A: 可通过修改配置或联系维护者定制。
 MIT
 
 ---
+
+## Node.js SDK
+
+项目新增 `sdk/BlurhashClient.ts`，封装登录、生成 blurhash、解码等常见接口调
+用，依赖 Node 18+ 原生 `fetch`。示例：
+
+```ts
+import { BlurhashClient } from './sdk/BlurhashClient';
+
+const client = new BlurhashClient({ baseUrl: 'http://localhost:3000/api/v1' });
+await client.login('demo_key1');
+
+const result = await client.generateFromUrl('https://example.com/1.jpg');
+console.log(result.data.blurhash);
+```
+
